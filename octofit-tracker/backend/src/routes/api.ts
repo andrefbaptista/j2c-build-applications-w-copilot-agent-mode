@@ -7,15 +7,15 @@ import Workout from '../models/Workout.js';
 
 const router = Router();
 
-router.get('/users/', async (_request, response) => {
+router.get('/api/users/', async (_request, response) => {
   response.json(await User.find().populate('team').sort({ name: 1 }));
 });
 
-router.get('/teams/', async (_request, response) => {
+router.get('/api/teams/', async (_request, response) => {
   response.json(await Team.find().populate('members').sort({ name: 1 }));
 });
 
-router.get('/activities/', async (_request, response) => {
+router.get('/api/activities/', async (_request, response) => {
   response.json(
     await Activity.find()
       .populate('user', 'name username')
@@ -24,7 +24,7 @@ router.get('/activities/', async (_request, response) => {
   );
 });
 
-router.get('/leaderboard/', async (_request, response) => {
+router.get('/api/leaderboard/', async (_request, response) => {
   response.json(
     await Leaderboard.find()
       .populate('user', 'name username')
@@ -33,7 +33,7 @@ router.get('/leaderboard/', async (_request, response) => {
   );
 });
 
-router.get('/workouts/', async (_request, response) => {
+router.get('/api/workouts/', async (_request, response) => {
   response.json(await Workout.find().sort({ name: 1 }));
 });
 

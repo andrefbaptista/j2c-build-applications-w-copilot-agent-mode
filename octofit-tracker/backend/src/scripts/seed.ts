@@ -16,45 +16,63 @@ async function seedDatabase() {
     await mongoose.connect(connectionString);
     console.log('Connected to octofit_db');
 
+    async function seedUser(data: {
+      email: string;
+      name: string;
+      username: string;
+    }) {
+      const user = await User.findOne({ email: data.email });
+      if (!user) {
+        return User.create(data);
+      }
+
+      user.set(data);
+      return user.save();
+    }
+
     const users = await Promise.all([
-      User.findOneAndUpdate(
-        { email: 'ava.morgan@example.com' },
-        { $set: { name: 'Ava Morgan', username: 'avamoves' } },
-        { upsert: true, returnDocument: 'after', runValidators: true },
-      ),
-      User.findOneAndUpdate(
-        { email: 'liam.chen@example.com' },
-        { $set: { name: 'Liam Chen', username: 'liamruns' } },
-        { upsert: true, returnDocument: 'after', runValidators: true },
-      ),
-      User.findOneAndUpdate(
-        { email: 'sofia.rivera@example.com' },
-        { $set: { name: 'Sofia Rivera', username: 'sofiastrong' } },
-        { upsert: true, returnDocument: 'after', runValidators: true },
-      ),
+      seedUser({
+        email: 'ava.morgan@example.com',
+        name: 'Ava Morgan',
+        username: 'avamoves',
+      }),
+      seedUser({
+        email: 'liam.chen@example.com',
+        name: 'Liam Chen',
+        username: 'liamruns',
+      }),
+      seedUser({
+        email: 'sofia.rivera@example.com',
+        name: 'Sofia Rivera',
+        username: 'sofiastrong',
+      }),
     ]);
 
+    async function seedTeam(data: {
+      name: string;
+      description: string;
+      members: mongoose.Types.ObjectId[];
+    }) {
+      const team = await Team.findOne({ name: data.name });
+      if (!team) {
+        return Team.create(data);
+      }
+
+      team.set(data);
+      return team.save();
+    }
+
     const teams = await Promise.all([
-      Team.findOneAndUpdate(
-        { name: 'Trail Blazers' },
-        {
-          $set: {
-            description: 'A team focused on steady miles and outdoor adventures.',
-            members: [users[0]._id, users[1]._id],
-          },
-        },
-        { upsert: true, returnDocument: 'after', runValidators: true },
-      ),
-      Team.findOneAndUpdate(
-        { name: 'Strength Squad' },
-        {
-          $set: {
-            description: 'A supportive crew building strength one session at a time.',
-            members: [users[2]._id],
-          },
-        },
-        { upsert: true, returnDocument: 'after', runValidators: true },
-      ),
+      seedTeam({
+        name: 'Trail Blazers',
+        description: 'A team focused on steady miles and outdoor adventures.',
+        members: [users[0]._id, users[1]._id],
+      }),
+      seedTeam({
+        name: 'Strength Squad',
+        description: 'A supportive crew building strength one session at a time.',
+        members: [users[2]._id],
+      }),
     ]);
 
     await Promise.all([
@@ -103,17 +121,20 @@ async function seedDatabase() {
     ] as const;
 
     await Promise.all(
-      activitySamples.map(({ user, team, ...activity }) =>
-        Activity.findOneAndUpdate(
-          {
-            user: user._id,
-            activityType: activity.activityType,
-            date: activity.date,
-          },
-          { $set: { ...activity, user: user._id, team: team._id } },
-          { upsert: true, returnDocument: 'after', runValidators: true },
-        ),
-      ),
+      activitySamples.map(async ({ user, team, ...activity }) => {
+        const data = { ...activity, user: user._id, team: team._id };
+        const existing = await Activity.findOne({
+          user: user._id,
+          activityType: activity.activityType,
+          date: activity.date,
+        });
+        if (!existing) {
+          return Activity.create(data);
+        }
+
+        existing.set(data);
+        return existing.save();
+      }),
     );
 
     const periodStart = new Date('2026-10-01T00:00:00Z');
@@ -123,13 +144,16 @@ async function seedDatabase() {
       { user: users[2], team: teams[1], points: 590, activitiesCount: 1 },
     ];
     await Promise.all(
-      standings.map(({ user, team, ...standing }) =>
-        Leaderboard.findOneAndUpdate(
-          { user: user._id, periodStart },
-          { $set: { ...standing, user: user._id, team: team._id } },
-          { upsert: true, returnDocument: 'after', runValidators: true },
-        ),
-      ),
+      standings.map(async ({ user, team, ...standing }) => {
+        const data = { ...standing, user: user._id, team: team._id, periodStart };
+        const existing = await Leaderboard.findOne({ user: user._id, periodStart });
+        if (!existing) {
+          return Leaderboard.create(data);
+        }
+
+        existing.set(data);
+        return existing.save();
+      }),
     );
 
     const workouts = [
@@ -173,13 +197,18 @@ async function seedDatabase() {
     ] as const;
 
     await Promise.all(
-      workouts.map((workout) =>
-        Workout.findOneAndUpdate(
-          { name: workout.name },
-          { $set: workout },
-          { upsert: true, returnDocument: 'after', runValidators: true },
-        ),
-      ),
+      workouts.map(async (workout) => {
+        const existing = await Workout.findOne({ name: workout.name });
+        if (!existing) {
+          return Workout.create({
+            ...workout,
+            exercises: [...workout.exercises],
+          });
+        }
+
+        existing.set(workout);
+        return existing.save();
+      }),
     );
 
     console.log('Database seeding complete');

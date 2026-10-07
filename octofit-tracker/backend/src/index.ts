@@ -19,7 +19,7 @@ app.use(express.json());
 app.get('/api/health', (_request, response) => {
   response.json({ status: 'ok' });
 });
-app.use('/api', apiRouter);
+app.use(apiRouter);
 
 const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
   console.error('API request failed:', error);
